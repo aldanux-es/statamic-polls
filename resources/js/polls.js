@@ -10,10 +10,19 @@
  * Usage: import it in your bundle (it initialises itself), or load the published copy:
  *   <script type="module" src="/vendor/statamic-polls/js/polls.js"></script>
  * Call initPolls(element) again for polls injected after page load.
+ *
+ * With Cloudflare Turnstile enabled, the markup carries a [data-poll-turnstile] placeholder:
+ * this script loads Cloudflare's script once and renders the widget in each open poll.
  */
 
 const SELECTOR = '[data-poll]';
 const VOTED_KEY = 'statamic-polls:voted:';
+const TURNSTILE_SELECTOR = '[data-poll-turnstile], .cf-turnstile';
+const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+const TURNSTILE_ONLOAD = 'statamicPollsTurnstileLoaded';
+const TURNSTILE_TIMEOUT = 15000;
+
+let turnstileLoading = null;
 
 export function initPolls(root = document) {
     root.querySelectorAll(SELECTOR).forEach(setup);
@@ -46,9 +55,166 @@ function setup(poll) {
         form.addEventListener('change', () => poll.querySelector('[data-poll-error]')?.setAttribute('hidden', ''));
     }
 
-    if (needsState(poll)) {
-        fetchState(poll).then((state) => state && apply(poll, state));
+    if (!needsState(poll)) {
+        renderTurnstile(poll);
+
+        return;
     }
+
+    fetchState(poll).then((state) => {
+        if (state) {
+            apply(poll, state);
+        }
+
+        // No security check for visitors who can't vote anyway (already voted, logged out).
+        if (!state || state.can_vote) {
+            renderTurnstile(poll);
+        }
+    });
+}
+
+function loadTurnstile() {
+    if (window.turnstile?.render) {
+        return Promise.resolve(window.turnstile);
+    }
+
+    turnstileLoading ??= new Promise((resolve, reject) => {
+        // The site may load Cloudflare's script itself: wait for it instead of adding a copy.
+        const existing = document.querySelector(`script[src^="${TURNSTILE_SCRIPT}"]:not([data-polls-turnstile])`);
+        const script = existing ?? document.createElement('script');
+
+        let timer = null;
+
+        const ready = () => {
+            window.clearTimeout(timer);
+            resolve(window.turnstile);
+        };
+
+        const fail = () => {
+            window.clearTimeout(timer);
+
+            // Drop our failed copy, so the next attempt loads a fresh one.
+            if (!existing) {
+                script.remove();
+            }
+
+            reject(new Error('Cloudflare Turnstile could not be loaded.'));
+        };
+
+        // Blocked scripts don't always fire "error" (some blockers just never answer).
+        timer = window.setTimeout(fail, TURNSTILE_TIMEOUT);
+        script.addEventListener('error', fail);
+
+        if (existing) {
+            existing.addEventListener('load', () => (window.turnstile?.render ? ready() : fail()));
+
+            return;
+        }
+
+        window[TURNSTILE_ONLOAD] = ready;
+
+        script.src = `${TURNSTILE_SCRIPT}?render=explicit&onload=${TURNSTILE_ONLOAD}`;
+        script.async = true;
+        script.dataset.pollsTurnstile = '';
+        document.head.append(script);
+    }).catch((error) => {
+        // Let the next attempt try again (e.g. the visitor was briefly offline).
+        turnstileLoading = null;
+
+        throw error;
+    });
+
+    return turnstileLoading;
+}
+
+/**
+ * data-poll-turnstile-state: "loading" until the widget is on the page, "rendered" once it is,
+ * "failed" when the script or the widget gave up. The token itself is Cloudflare's hidden
+ * cf-turnstile-response input inside the container.
+ */
+function renderTurnstile(poll) {
+    poll.querySelectorAll(TURNSTILE_SELECTOR).forEach((container) => {
+        const state = container.dataset.pollTurnstileState;
+
+        // On its way or on the page, rendered by us or by a Turnstile script the site loads.
+        if (state === 'loading' || state === 'rendered' || container.querySelector('iframe, input[name="cf-turnstile-response"]')) {
+            return;
+        }
+
+        container.dataset.pollTurnstileState = 'loading';
+
+        loadTurnstile()
+            .then((turnstile) => {
+                const id = turnstile.render(container, {
+                    sitekey: container.dataset.sitekey,
+                    callback: () => {
+                        container.dataset.pollTurnstileState = 'rendered';
+                    },
+                    'error-callback': () => {
+                        container.dataset.pollTurnstileState = 'failed';
+                    },
+                });
+
+                if (typeof id !== 'string' || id === '') {
+                    throw new Error('Cloudflare Turnstile did not render.');
+                }
+
+                container.dataset.pollTurnstileId = id;
+
+                if (container.dataset.pollTurnstileState === 'loading') {
+                    container.dataset.pollTurnstileState = 'rendered';
+                }
+            })
+            .catch(() => {
+                container.dataset.pollTurnstileState = 'failed';
+            });
+    });
+}
+
+function resetWidget(container) {
+    try {
+        // reset() takes the widget id, or the container for widgets rendered by the site's own script.
+        window.turnstile?.reset(container.dataset.pollTurnstileId || container);
+    } catch {
+        // Unknown widget: nothing to reset.
+    }
+}
+
+// A Turnstile token is single-use: after a failed submission, get the visitor a fresh one.
+function resetTurnstile(poll) {
+    poll.querySelectorAll(TURNSTILE_SELECTOR).forEach(resetWidget);
+}
+
+// After a failure, try again: reset a widget that errored, or load the script once more.
+function retryTurnstile(poll) {
+    poll.querySelectorAll(TURNSTILE_SELECTOR).forEach((container) => {
+        if (container.dataset.pollTurnstileState !== 'failed') {
+            return;
+        }
+
+        if (container.dataset.pollTurnstileId) {
+            container.dataset.pollTurnstileState = 'rendered';
+            resetWidget(container);
+        } else {
+            delete container.dataset.pollTurnstileState;
+        }
+    });
+
+    renderTurnstile(poll);
+}
+
+/**
+ * Why the form can't be sent yet: "waiting" while the check runs, "failed" when it couldn't
+ * run (script blocked, widget error). Null when there is a token, or no Turnstile at all.
+ */
+function turnstileProblem(form) {
+    const container = form.querySelector(TURNSTILE_SELECTOR);
+
+    if (!container || form.querySelector('input[name="cf-turnstile-response"]')?.value) {
+        return null;
+    }
+
+    return container.dataset.pollTurnstileState === 'failed' ? 'failed' : 'waiting';
 }
 
 function needsState(poll) {
@@ -116,6 +282,21 @@ async function submit(poll, form) {
         return;
     }
 
+    const problem = turnstileProblem(form);
+
+    if (problem === 'failed') {
+        showError(error, error?.dataset.pollErrorUnverified);
+        retryTurnstile(poll);
+
+        return;
+    }
+
+    if (problem === 'waiting') {
+        showError(error, error?.dataset.pollErrorVerifying);
+
+        return;
+    }
+
     button?.setAttribute('disabled', '');
     error?.setAttribute('hidden', '');
 
@@ -135,8 +316,10 @@ async function submit(poll, form) {
         }
 
         showError(error, data.message);
+        resetTurnstile(poll);
     } catch {
         showError(error);
+        resetTurnstile(poll);
     } finally {
         button?.removeAttribute('disabled');
     }

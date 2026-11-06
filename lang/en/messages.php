@@ -21,5 +21,6 @@ return [
     'not_open' => 'This poll is not open.',
     'invalid_option' => 'Pick one of the options.',
     'too_many_attempts' => 'Too many attempts. Please wait a moment and try again.',
-    'verification_failed' => 'We could not verify you are not a robot.',
+    'verification_failed' => 'We could not verify you are not a robot. Please try again.',
+    'verification_pending' => 'Please wait a moment while we check you are not a robot.',
 ];

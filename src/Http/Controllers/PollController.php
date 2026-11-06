@@ -39,7 +39,8 @@ class PollController extends Controller
         if (! $request->expectsJson()) {
             return redirect()
                 ->to(url()->previous().'#poll-'.$poll->id())
-                ->with('statamic-polls.outcome', $outcome->value);
+                ->with('statamic-polls.outcome', $outcome->value)
+                ->with('statamic-polls.poll', $poll->id());
         }
 
         return $this->noStore(response()->json([

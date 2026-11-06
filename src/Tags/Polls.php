@@ -4,6 +4,7 @@ namespace Aldanux\StatamicPolls\Tags;
 
 use Aldanux\StatamicPolls\Enums\Audience;
 use Aldanux\StatamicPolls\Enums\PollStatus;
+use Aldanux\StatamicPolls\Enums\VoteOutcome;
 use Aldanux\StatamicPolls\Options\PollOption;
 use Aldanux\StatamicPolls\Poll;
 use Aldanux\StatamicPolls\PollManager;
@@ -19,6 +20,7 @@ use Statamic\Tags\Tags;
  * {{ polls:archive group="player-of-month" }} every opened poll of a group, newest first
  * {{ polls:winner group="player-of-month" }}  the winning answer(s) of the latest closed poll
  * {{ polls:head }}                          tiny pre-paint script for the <head> (see head())
+ * {{ polls:outcome :poll="id" }}             the result of a vote sent without JavaScript
  *
  * The markup is cache-safe: nothing in it depends on the visitor. Their state (voted, login)
  * is fetched by polls.js from the state endpoint.
@@ -65,6 +67,35 @@ class Polls extends Tags
         return <<<'HTML'
             <script>(function(){try{var p='statamic-polls:voted:',c='';for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(p)===0){var id=k.slice(p.length).replace(/[^A-Za-z0-9_-]/g,'');var s='[data-poll="'+id+'"] ';c+=s+'[data-poll-form]{display:none!important}'+s+'[data-poll-thanks]{display:block!important}';}}if(c){var e=document.createElement('style');e.setAttribute('data-polls-voted','');e.textContent=c;document.head.appendChild(e);}}catch(e){}})();</script>
             HTML;
+    }
+
+    /**
+     * The result of a vote sent without JavaScript: the form posts, and the visitor comes back
+     * with the outcome flashed to the session. It depends on the visitor, so wrap it in
+     * {{ nocache }} on cached pages. Without a match it renders nothing (a pair given an empty
+     * array would still render its content).
+     *
+     * @return array{outcome: string, message: string, is_success: bool}|string
+     */
+    public function outcome(): array|string
+    {
+        $outcome = VoteOutcome::tryFrom((string) session('statamic-polls.outcome'));
+
+        if (! $outcome) {
+            return '';
+        }
+
+        $limitedToPoll = $this->params->has('poll') || $this->params->has('id') || $this->params->has('from');
+
+        if ($limitedToPoll && session('statamic-polls.poll') !== $this->pollFromParams()?->id()) {
+            return '';
+        }
+
+        return [
+            'outcome' => $outcome->value,
+            'message' => __('statamic-polls::messages.'.$outcome->value, [], $this->locale($this->site())),
+            'is_success' => $outcome->counts() || $outcome === VoteOutcome::AlreadyVoted,
+        ];
     }
 
     /**
@@ -138,9 +169,21 @@ class Polls extends Tags
             'state_url' => route('statamic.statamic-polls.state', ['poll' => $poll->id(), 'site' => $site], false),
             'vote_url' => route('statamic.statamic-polls.vote', ['poll' => $poll->id()], false),
             'honeypot' => config('statamic-polls.protection.honeypot'),
+            'shows_outcome_without_js' => $status === PollStatus::Open && ! $this->usesFullStaticCaching(),
             'turnstile_site_key' => app(VoteProtection::class)->turnstileEnabled() ? config('statamic-polls.turnstile.site_key') : null,
             'entry' => $poll->entry(),
         ];
+    }
+
+    /**
+     * With the `full` strategy a vote without JavaScript can't work (the cached form carries
+     * Statamic's CSRF placeholder), and a nocache region would cost a PHP request on every view.
+     */
+    protected function usesFullStaticCaching(): bool
+    {
+        $strategy = config('statamic.static_caching.strategy');
+
+        return is_string($strategy) && config("statamic.static_caching.strategies.{$strategy}.driver") === 'file';
     }
 
     protected function pollFromParams(): ?Poll

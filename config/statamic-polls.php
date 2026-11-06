@@ -54,7 +54,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Each poll picks an audience. "public" polls identify visitors with a
-    | signed cookie; "authenticated" polls require a logged-in user of the
+    | encrypted cookie; "authenticated" polls require a logged-in user of the
     | given guard (null = the app's default guard). Register your own voter by
     | implementing Aldanux\StatamicPolls\Voters\Voter.
     |
@@ -96,7 +96,10 @@ return [
     | Cloudflare Turnstile (optional)
     |--------------------------------------------------------------------------
     |
-    | When both keys are set, every vote must carry a valid Turnstile token.
+    | When both keys are set, every vote must carry a valid Turnstile token. polls.js loads
+    | Cloudflare's script and renders the widget in each open poll, so voting then needs
+    | JavaScript. Each token is checked with Cloudflare's siteverify API, which receives the
+    | token and the visitor's IP address.
     |
     */
 
