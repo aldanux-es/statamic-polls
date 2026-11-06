@@ -33,10 +33,18 @@ function setup(poll) {
 
     const form = poll.querySelector('[data-poll-form]');
 
-    form?.addEventListener('submit', (event) => {
-        event.preventDefault();
-        submit(poll, form);
-    });
+    if (form) {
+        // Our own message under the button replaces the browser's validation bubble; the
+        // `required` attribute stays in the markup for visitors without JavaScript.
+        form.noValidate = true;
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            submit(poll, form);
+        });
+
+        form.addEventListener('change', () => poll.querySelector('[data-poll-error]')?.setAttribute('hidden', ''));
+    }
 
     if (needsState(poll)) {
         fetchState(poll).then((state) => state && apply(poll, state));
@@ -101,6 +109,12 @@ async function fetchState(poll) {
 async function submit(poll, form) {
     const button = form.querySelector('[data-poll-submit]');
     const error = poll.querySelector('[data-poll-error]');
+
+    if (form.querySelector('input[name="option"]') && !form.querySelector('input[name="option"]:checked')) {
+        showError(error, error?.dataset.pollErrorChoose);
+
+        return;
+    }
 
     button?.setAttribute('disabled', '');
     error?.setAttribute('hidden', '');

@@ -58,7 +58,7 @@
             {{ /if }}
 
             <button type="submit" class="poll__submit" data-poll-submit>{{ trans key="statamic-polls::messages.vote" }}</button>
-            <p class="poll__error" role="alert" data-poll-error data-poll-error-default="{{ trans key='statamic-polls::messages.error' }}" hidden></p>
+            <p class="poll__error" role="alert" data-poll-error data-poll-error-default="{{ trans key='statamic-polls::messages.error' }}" data-poll-error-choose="{{ trans key='statamic-polls::messages.invalid_option' }}" hidden></p>
 
             {{ if closes_on_text }}
                 <p class="poll__deadline">{{ closes_on_text }}</p>
