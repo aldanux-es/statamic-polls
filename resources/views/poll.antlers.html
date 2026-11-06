@@ -25,16 +25,19 @@
         <p class="poll__description">{{ description }}</p>
     {{ /if }}
 
-    {{# The outcome of a vote sent without JavaScript. It depends on the visitor: nocache. #}}
-    {{ nocache select="id|site" }}
-        {{ polls:outcome :poll="id" :site="site" }}
-            <p class="poll__outcome poll__outcome--{{ outcome }}" role="status">{{ message }}</p>
-        {{ /polls:outcome }}
-    {{ /nocache }}
-
     {{ if is_scheduled }}
         <p class="poll__notice">{{ opens_on_text }}</p>
     {{ elseif is_open }}
+        {{# The outcome of a vote sent without JavaScript. It depends on the visitor: nocache.
+            Left out with `full` static caching, where voting needs JavaScript anyway. #}}
+        {{ if shows_outcome_without_js }}
+            {{ nocache select="id|site" }}
+                {{ polls:outcome :poll="id" :site="site" }}
+                    <p class="poll__outcome poll__outcome--{{ outcome }}" role="status">{{ message }}</p>
+                {{ /polls:outcome }}
+            {{ /nocache }}
+        {{ /if }}
+
         <form class="poll__form" method="POST" action="{{ vote_url }}" data-poll-form>
             {{ csrf_field }}
             <input type="hidden" name="site" value="{{ site }}">
@@ -67,7 +70,7 @@
             {{ /if }}
 
             <button type="submit" class="poll__submit" data-poll-submit>{{ trans key="statamic-polls::messages.vote" }}</button>
-            <p class="poll__error" role="alert" data-poll-error data-poll-error-default="{{ trans key='statamic-polls::messages.error' }}" data-poll-error-choose="{{ trans key='statamic-polls::messages.invalid_option' }}" data-poll-error-verifying="{{ trans key='statamic-polls::messages.verification_pending' }}" hidden></p>
+            <p class="poll__error" role="alert" data-poll-error data-poll-error-default="{{ trans key='statamic-polls::messages.error' }}" data-poll-error-choose="{{ trans key='statamic-polls::messages.invalid_option' }}" data-poll-error-verifying="{{ trans key='statamic-polls::messages.verification_pending' }}" data-poll-error-unverified="{{ trans key='statamic-polls::messages.verification_failed' }}" hidden></p>
 
             {{ if closes_on_text }}
                 <p class="poll__deadline">{{ closes_on_text }}</p>

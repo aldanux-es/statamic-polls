@@ -5,6 +5,7 @@ use Aldanux\StatamicPolls\Poll;
 use Aldanux\StatamicPolls\PollManager;
 use Aldanux\StatamicPolls\Votes\Vote;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as HttpRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
@@ -159,6 +160,18 @@ it('checks every vote with cloudflare turnstile once both keys are set', functio
         && $request['remoteip'] === '127.0.0.1');
 });
 
+it('turns the vote away when cloudflare does not answer', function () {
+    config(['statamic-polls.turnstile.site_key' => 'site-key', 'statamic-polls.turnstile.secret' => 'secret']);
+    Http::fake(fn () => throw new ConnectionException('Timed out'));
+    $poll = poll();
+
+    vote($poll->id(), 'text:other', ['cf-turnstile-response' => 'token'])
+        ->assertUnprocessable()
+        ->assertJson(['outcome' => 'verification_failed']);
+
+    expect(app(PollManager::class)->votes()->tally($poll->id()))->toBe([]);
+});
+
 it('leaves turnstile out until both keys are set', function () {
     config(['statamic-polls.turnstile.site_key' => 'site-key', 'statamic-polls.turnstile.secret' => null]);
     Http::fake();
@@ -184,6 +197,26 @@ it('confirms a vote sent without javascript when the visitor comes back', functi
         ->toContain('Thanks for voting!')
         ->and(render('{{ polls :poll="poll" }}', ['poll' => $other->id()]))
         ->not->toContain('poll__outcome');
+});
+
+it('shows the outcome for any poll, or for the one given as an id or an entry', function () {
+    $poll = poll();
+    $other = poll();
+    session()->flash('statamic-polls.outcome', 'already_voted');
+    session()->flash('statamic-polls.poll', $poll->id());
+
+    expect(render('{{ polls:outcome }}{{ outcome }}|{{ is_success ? "ok" : "ko" }}{{ /polls:outcome }}'))->toBe('already_voted|ok')
+        ->and(render('{{ polls:outcome :poll="poll" }}{{ message }}{{ /polls:outcome }}', ['poll' => $poll]))->toBe('You have already voted in this poll.')
+        ->and(render('{{ polls:outcome :poll="poll" }}{{ message }}{{ /polls:outcome }}', ['poll' => $other]))->toBe('');
+});
+
+it('leaves the no-javascript outcome out with full static caching', function () {
+    $poll = poll();
+    session()->flash('statamic-polls.outcome', 'recorded');
+    session()->flash('statamic-polls.poll', $poll->id());
+    config(['statamic.static_caching.strategy' => 'full']);
+
+    expect(render('{{ polls :poll="poll" }}', ['poll' => $poll->id()]))->not->toContain('poll__outcome');
 });
 
 it('caps the votes of a shared address', function () {

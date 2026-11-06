@@ -6,12 +6,12 @@ All notable changes to this addon are documented here. The format follows [Keep 
 
 ### Fixed
 
-- Cloudflare Turnstile now works as documented: `polls.js` loads Cloudflare's script and renders the widget in each open poll. Before, nothing loaded the script, so with both keys set every vote was turned away. After a failed vote the widget is reset, so the visitor can try again, and a vote sent before the check finishes asks the visitor to wait.
-- A vote sent without JavaScript now shows its outcome ("Thanks for voting!") when the visitor comes back to the page, through the new `polls:outcome` tag inside `{{ nocache }}`.
+- Cloudflare Turnstile now works as documented: `polls.js` loads Cloudflare's script (or waits for the site's own copy) and renders the widget in each open poll. Before, nothing loaded the script, so with both keys set every vote was turned away. After a failed vote the widget is reset, so the visitor can try again; a vote sent before the check finishes asks the visitor to wait, and if the script or the widget fails the visitor is told so and it is retried.
+- A vote sent without JavaScript now shows its outcome ("Thanks for voting!") when the visitor comes back to the page, through the new `polls:outcome` tag inside `{{ nocache }}`. Left out with `full` static caching, where voting needs JavaScript.
 
 ### Changed
 
-- The Turnstile placeholder in the default view is now `<div data-poll-turnstile data-sitekey="…">`. Published views with the old `.cf-turnstile` placeholder keep working.
+- The Turnstile placeholder in the default view is now `<div data-poll-turnstile data-sitekey="…">`, and the error element carries `data-poll-error-verifying` and `data-poll-error-unverified`. Published views with the old `.cf-turnstile` placeholder keep working; without the new attributes they show the generic error message.
 
 ### Added
 

@@ -54,7 +54,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Each poll picks an audience. "public" polls identify visitors with a
-    | signed cookie; "authenticated" polls require a logged-in user of the
+    | encrypted cookie; "authenticated" polls require a logged-in user of the
     | given guard (null = the app's default guard). Register your own voter by
     | implementing Aldanux\StatamicPolls\Voters\Voter.
     |

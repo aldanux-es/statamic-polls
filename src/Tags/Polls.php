@@ -72,18 +72,22 @@ class Polls extends Tags
     /**
      * The result of a vote sent without JavaScript: the form posts, and the visitor comes back
      * with the outcome flashed to the session. It depends on the visitor, so wrap it in
-     * {{ nocache }} on cached pages (the default view does).
-     *
-     * Without one it renders nothing (a pair given an empty array still renders its content).
+     * {{ nocache }} on cached pages. Without a match it renders nothing (a pair given an empty
+     * array would still render its content).
      *
      * @return array{outcome: string, message: string, is_success: bool}|string
      */
     public function outcome(): array|string
     {
         $outcome = VoteOutcome::tryFrom((string) session('statamic-polls.outcome'));
-        $poll = $this->params->get('poll');
 
-        if (! $outcome || (is_string($poll) && $poll !== '' && session('statamic-polls.poll') !== $poll)) {
+        if (! $outcome) {
+            return '';
+        }
+
+        $limitedToPoll = $this->params->has('poll') || $this->params->has('id') || $this->params->has('from');
+
+        if ($limitedToPoll && session('statamic-polls.poll') !== $this->pollFromParams()?->id()) {
             return '';
         }
 
@@ -165,9 +169,21 @@ class Polls extends Tags
             'state_url' => route('statamic.statamic-polls.state', ['poll' => $poll->id(), 'site' => $site], false),
             'vote_url' => route('statamic.statamic-polls.vote', ['poll' => $poll->id()], false),
             'honeypot' => config('statamic-polls.protection.honeypot'),
+            'shows_outcome_without_js' => $status === PollStatus::Open && ! $this->usesFullStaticCaching(),
             'turnstile_site_key' => app(VoteProtection::class)->turnstileEnabled() ? config('statamic-polls.turnstile.site_key') : null,
             'entry' => $poll->entry(),
         ];
+    }
+
+    /**
+     * With the `full` strategy a vote without JavaScript can't work (the cached form carries
+     * Statamic's CSRF placeholder), and a nocache region would cost a PHP request on every view.
+     */
+    protected function usesFullStaticCaching(): bool
+    {
+        $strategy = config('statamic.static_caching.strategy');
+
+        return is_string($strategy) && config("statamic.static_caching.strategies.{$strategy}.driver") === 'file';
     }
 
     protected function pollFromParams(): ?Poll
