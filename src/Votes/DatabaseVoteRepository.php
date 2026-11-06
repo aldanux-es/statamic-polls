@@ -2,6 +2,7 @@
 
 namespace Aldanux\StatamicPolls\Votes;
 
+use Aldanux\StatamicPolls\Enums\RecordResult;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Database\Query\Builder;
@@ -18,22 +19,38 @@ class DatabaseVoteRepository implements VoteRepository
         protected string $table,
     ) {}
 
-    public function record(Vote $vote): bool
+    public function record(Vote $vote, int $maxPerIp = 0): RecordResult
     {
         try {
-            $this->query()->insert([
-                'poll_id' => $vote->pollId,
-                'option_key' => $vote->optionKey,
-                'voter_id' => $vote->voterId,
-                'ip_hash' => $vote->ipHash,
-                'site' => $vote->site,
-                'created_at' => $vote->createdAt ?? CarbonImmutable::now(),
-            ]);
-        } catch (UniqueConstraintViolationException) {
-            return false;
-        }
+            return $this->connection->transaction(function () use ($vote, $maxPerIp): RecordResult {
+                // Locks the (poll, ip) index range, so parallel votes from one address queue up.
+                if ($maxPerIp > 0 && $this->query()
+                    ->where('poll_id', $vote->pollId)
+                    ->where('ip_hash', $vote->ipHash)
+                    ->lockForUpdate()
+                    ->count() >= $maxPerIp) {
+                    return RecordResult::IpLimitReached;
+                }
 
-        return true;
+                $this->insert($vote);
+
+                return RecordResult::Recorded;
+            });
+        } catch (UniqueConstraintViolationException) {
+            return RecordResult::Duplicate;
+        }
+    }
+
+    protected function insert(Vote $vote): void
+    {
+        $this->query()->insert([
+            'poll_id' => $vote->pollId,
+            'option_key' => $vote->optionKey,
+            'voter_id' => $vote->voterId,
+            'ip_hash' => $vote->ipHash,
+            'site' => $vote->site,
+            'created_at' => $vote->createdAt ?? CarbonImmutable::now(),
+        ]);
     }
 
     public function hasVoted(string $pollId, string $voterId): bool

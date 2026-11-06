@@ -2,8 +2,12 @@
     Default poll markup. Publish it to customise:
     php artisan vendor:publish --tag=statamic-polls-views
 
-    Nothing here depends on the visitor, so it is safe to static-cache. polls.js reads
-    data-poll-state-url and toggles the [data-poll-*] blocks (voted, login, live results).
+    Nothing here depends on the visitor, so it is safe to static-cache. polls.js asks the
+    state endpoint only when it has to (this browser voted before, login-only polls, or live
+    results) and toggles the [data-poll-*] blocks, so a plain page view costs no PHP.
+
+    Voting needs JavaScript on a static-cached page: Statamic's own script swaps the cached
+    CSRF placeholder for a real token. On uncached pages the form also works without it.
 #}}
 <section
     id="poll-{{ id }}"
@@ -11,6 +15,8 @@
     data-poll="{{ id }}"
     data-poll-status="{{ status }}"
     data-poll-state-url="{{ state_url }}"
+    data-poll-audience="{{ login_required ? 'authenticated' : 'public' }}"
+    data-poll-results="{{ results_visibility }}"
 >
     <h2 class="poll__question">{{ question }}</h2>
 
@@ -26,7 +32,7 @@
             <input type="hidden" name="site" value="{{ site }}">
 
             {{ if honeypot }}
-                <div class="poll__honeypot" aria-hidden="true">
+                <div class="poll__honeypot" aria-hidden="true" hidden>
                     <label>
                         {{ trans key="statamic-polls::messages.honeypot" }}
                         <input type="text" name="{{ honeypot }}" value="" tabindex="-1" autocomplete="off">

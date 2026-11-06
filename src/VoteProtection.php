@@ -34,6 +34,15 @@ class VoteProtection
     }
 
     /**
+     * Votes one IP address may cast per poll (0 = no cap). The vote storage enforces it in the
+     * same atomic step as the write.
+     */
+    public function maxVotesPerIp(): int
+    {
+        return max(0, (int) config('statamic-polls.protection.max_votes_per_ip', 25));
+    }
+
+    /**
      * Counts this attempt and tells whether the visitor went over the per-minute limit.
      */
     public function tooManyAttempts(Request $request): bool
@@ -44,15 +53,9 @@ class VoteProtection
             return false;
         }
 
-        $key = 'statamic-polls:'.$this->ipHash($request);
-
-        if (RateLimiter::tooManyAttempts($key, $limit)) {
-            return true;
-        }
-
-        RateLimiter::hit($key, 60);
-
-        return false;
+        // hit() increments atomically and returns the new count, so parallel requests can't
+        // all read "0 attempts" before any of them counts.
+        return RateLimiter::hit('statamic-polls:'.$this->ipHash($request), 60) > $limit;
     }
 
     public function turnstileEnabled(): bool
@@ -66,9 +69,9 @@ class VoteProtection
             return true;
         }
 
-        $token = (string) $request->input('cf-turnstile-response', '');
+        $token = $request->input('cf-turnstile-response');
 
-        if ($token === '') {
+        if (! is_string($token) || $token === '') {
             return false;
         }
 

@@ -32,7 +32,8 @@ class PollController extends Controller
     public function vote(Request $request, string $poll): JsonResponse|RedirectResponse
     {
         $poll = $this->findOrFail($poll, $request);
-        $outcome = $this->polls->vote($request, $poll, (string) $request->input('option', ''));
+        $option = $request->input('option');
+        $outcome = $this->polls->vote($request, $poll, is_string($option) ? $option : '');
         $hasVoted = $outcome->counts() || $outcome === VoteOutcome::AlreadyVoted;
 
         if (! $request->expectsJson()) {

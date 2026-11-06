@@ -2,6 +2,8 @@
 
 namespace Aldanux\StatamicPolls\Votes;
 
+use Aldanux\StatamicPolls\Enums\RecordResult;
+
 /**
  * Where votes live. Implementations must make `record` atomic: two concurrent votes from the
  * same voter must never both be stored.
@@ -9,11 +11,10 @@ namespace Aldanux\StatamicPolls\Votes;
 interface VoteRepository
 {
     /**
-     * Stores the vote unless this voter already voted in the poll.
-     *
-     * @return bool false when the voter had already voted
+     * Stores the vote unless this voter already voted in the poll or, when $maxPerIp is
+     * above zero, the vote's IP already cast that many votes. Checks and write are atomic.
      */
-    public function record(Vote $vote): bool;
+    public function record(Vote $vote, int $maxPerIp = 0): RecordResult;
 
     public function hasVoted(string $pollId, string $voterId): bool;
 

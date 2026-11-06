@@ -1,5 +1,6 @@
 {
     "name": "aldanux/statamic-polls",
+    "version": "0.1.0",
     "description": "Simple, reusable polls and voting for Statamic. Options from any collection or plain text, one vote per visitor, static-cache friendly.",
     "type": "statamic-addon",
     "license": "MIT",

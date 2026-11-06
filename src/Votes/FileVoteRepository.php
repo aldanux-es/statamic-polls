@@ -2,6 +2,7 @@
 
 namespace Aldanux\StatamicPolls\Votes;
 
+use Aldanux\StatamicPolls\Enums\RecordResult;
 use Illuminate\Filesystem\Filesystem;
 use InvalidArgumentException;
 use RuntimeException;
@@ -18,20 +19,28 @@ class FileVoteRepository implements VoteRepository
         protected string $path,
     ) {}
 
-    public function record(Vote $vote): bool
+    public function record(Vote $vote, int $maxPerIp = 0): RecordResult
     {
-        return $this->withLock($vote->pollId, LOCK_EX, function ($handle) use ($vote): bool {
+        return $this->withLock($vote->pollId, LOCK_EX, function ($handle) use ($vote, $maxPerIp): RecordResult {
+            $votesFromIp = 0;
+
             foreach ($this->lines($handle) as $line) {
                 if (($line['voter'] ?? null) === $vote->voterId) {
-                    return false;
+                    return RecordResult::Duplicate;
+                }
+
+                if (($line['ip'] ?? null) === $vote->ipHash) {
+                    $votesFromIp++;
                 }
             }
 
-            fseek($handle, 0, SEEK_END);
-            fwrite($handle, json_encode($vote->toArray(), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)."\n");
-            fflush($handle);
+            if ($maxPerIp > 0 && $votesFromIp >= $maxPerIp) {
+                return RecordResult::IpLimitReached;
+            }
 
-            return true;
+            $this->append($handle, json_encode($vote->toArray(), JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+            return RecordResult::Recorded;
         });
     }
 
@@ -131,6 +140,29 @@ class FileVoteRepository implements VoteRepository
             ->map(fn ($file): string => $file->getBasename('.jsonl'))
             ->values()
             ->all();
+    }
+
+    /**
+     * Appends a line, first closing any line a crashed write left without its newline, so
+     * the next vote isn't glued to (and lost with) the torn one.
+     *
+     * @param  resource  $handle
+     */
+    protected function append($handle, string $line): void
+    {
+        $stat = fstat($handle);
+
+        if ($stat !== false && $stat['size'] > 0) {
+            fseek($handle, -1, SEEK_END);
+
+            if (fread($handle, 1) !== "\n") {
+                $line = "\n".$line;
+            }
+        }
+
+        fseek($handle, 0, SEEK_END);
+        fwrite($handle, $line."\n");
+        fflush($handle);
     }
 
     /**

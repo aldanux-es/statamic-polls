@@ -4,6 +4,7 @@ namespace Aldanux\StatamicPolls;
 
 use Aldanux\StatamicPolls\Enums\Audience;
 use Aldanux\StatamicPolls\Enums\PollStatus;
+use Aldanux\StatamicPolls\Enums\RecordResult;
 use Aldanux\StatamicPolls\Enums\VoteOutcome;
 use Aldanux\StatamicPolls\Voters\Voter;
 use Aldanux\StatamicPolls\Votes\Vote;
@@ -126,29 +127,26 @@ class PollManager
             return VoteOutcome::VerificationFailed;
         }
 
-        $ipHash = $this->protection->ipHash($request);
-        $maxPerIp = (int) config('statamic-polls.protection.max_votes_per_ip', 25);
-
-        if ($maxPerIp > 0 && $this->votes->countForIp($poll->id(), $ipHash) >= $maxPerIp) {
-            return VoteOutcome::TooManyAttempts;
-        }
-
         $voterId = $this->voterId($request, $poll, create: true);
 
         if ($voterId === null) {
             return VoteOutcome::LoginRequired;
         }
 
-        $recorded = $this->votes->record(new Vote(
+        $result = $this->votes->record(new Vote(
             pollId: $poll->id(),
             optionKey: $optionKey,
             voterId: $voterId,
-            ipHash: $ipHash,
+            ipHash: $this->protection->ipHash($request),
             site: $poll->site(),
             createdAt: CarbonImmutable::now(),
-        ));
+        ), $this->protection->maxVotesPerIp());
 
-        return $recorded ? VoteOutcome::Recorded : VoteOutcome::AlreadyVoted;
+        return match ($result) {
+            RecordResult::Recorded => VoteOutcome::Recorded,
+            RecordResult::Duplicate => VoteOutcome::AlreadyVoted,
+            RecordResult::IpLimitReached => VoteOutcome::TooManyAttempts,
+        };
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace Aldanux\StatamicPolls\Commands;
 
+use Aldanux\StatamicPolls\Enums\RecordResult;
 use Aldanux\StatamicPolls\ServiceProvider;
 use Illuminate\Console\Command;
 
@@ -23,7 +24,7 @@ class MigrateVotes extends Command
 
         foreach ($from->polls() as $pollId) {
             foreach ($from->all($pollId) as $vote) {
-                $to->record($vote) ? $copied++ : $skipped++;
+                $to->record($vote) === RecordResult::Recorded ? $copied++ : $skipped++;
             }
         }
 

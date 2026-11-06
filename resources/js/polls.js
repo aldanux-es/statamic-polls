@@ -3,7 +3,9 @@
  *
  * The poll markup is static-cache safe: it never says whether *this* visitor voted. This
  * script asks the state endpoint and toggles the [data-poll-*] blocks, and sends votes with
- * fetch. Without JavaScript the form still posts normally.
+ * fetch. To keep page views free of PHP on static-cached sites, the endpoint is only asked
+ * when the answer can differ from the markup: this browser voted before (remembered in
+ * localStorage), the poll is for logged-in users, or its results are shown before closing.
  *
  * Usage: import it in your bundle (it initialises itself), or load the published copy:
  *   <script type="module" src="/vendor/statamic-polls/js/polls.js"></script>
@@ -11,6 +13,7 @@
  */
 
 const SELECTOR = '[data-poll]';
+const VOTED_KEY = 'statamic-polls:voted:';
 
 export function initPolls(root = document) {
     root.querySelectorAll(SELECTOR).forEach(setup);
@@ -35,7 +38,32 @@ function setup(poll) {
         submit(poll, form);
     });
 
-    fetchState(poll).then((state) => state && apply(poll, state));
+    if (needsState(poll)) {
+        fetchState(poll).then((state) => state && apply(poll, state));
+    }
+}
+
+function needsState(poll) {
+    return poll.dataset.pollAudience === 'authenticated'
+        || poll.dataset.pollResults !== 'after_close'
+        || remembersVote(poll.dataset.poll);
+}
+
+function remembersVote(id) {
+    try {
+        return window.localStorage.getItem(VOTED_KEY + id) === '1';
+    } catch {
+        // Storage blocked: ask the server, which knows through the voter cookie.
+        return true;
+    }
+}
+
+function rememberVote(id) {
+    try {
+        window.localStorage.setItem(VOTED_KEY + id, '1');
+    } catch {
+        // Ignore: the server still enforces one vote per voter.
+    }
 }
 
 async function fetchState(poll) {
@@ -90,6 +118,10 @@ function apply(poll, state) {
 
     poll.dataset.pollStatus = state.status;
     poll.toggleAttribute('data-poll-voted', Boolean(state.voted));
+
+    if (state.voted) {
+        rememberVote(poll.dataset.poll);
+    }
 
     toggle(form, state.can_vote);
     toggle(thanks, state.voted);

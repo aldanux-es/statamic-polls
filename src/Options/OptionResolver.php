@@ -166,10 +166,13 @@ class OptionResolver
 
     protected function castConditionValue(mixed $value): mixed
     {
-        return match (is_string($value) ? strtolower(trim($value)) : $value) {
-            'true' => true,
-            'false' => false,
-            'null', '' => null,
+        $normalized = is_string($value) ? strtolower(trim($value)) : $value;
+
+        return match (true) {
+            $normalized === 'true' => true,
+            $normalized === 'false' => false,
+            $normalized === 'null', $normalized === '' => null,
+            is_string($normalized) && is_numeric($normalized) => $normalized + 0,
             default => $value,
         };
     }

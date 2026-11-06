@@ -14,12 +14,24 @@ use Illuminate\Contracts\Support\Arrayable;
 final readonly class PollResults implements Arrayable
 {
     /**
+     * @var array<string, int> votes per option, limited to the poll's current options
+     */
+    public array $tally;
+
+    /**
+     * Votes for keys that are no longer options (e.g. the snapshot was lost and rebuilt with
+     * a different squad) are left out, so percentages add up and a vanished answer can't win.
+     *
      * @param  array<string, int>  $tally
      */
     public function __construct(
         public Poll $poll,
-        public array $tally,
-    ) {}
+        array $tally,
+    ) {
+        $keys = $poll->options()->map(fn (PollOption $option): string => $option->key)->all();
+
+        $this->tally = array_intersect_key($tally, array_flip($keys));
+    }
 
     public function total(): int
     {

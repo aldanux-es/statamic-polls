@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Str;
 use Statamic\Entries\Entry as StatamicEntry;
 use Statamic\Facades\Entry;
+use Statamic\Facades\Site;
 
 /**
  * Clones a poll (and its translations) for a new round, e.g. the next month of a monthly
@@ -45,14 +46,22 @@ class DuplicatePoll extends Command
             return self::FAILURE;
         }
 
-        $title = (string) ($this->option('title') ?: $source->title().' '.$opensAt->locale(app()->getLocale())->isoFormat('MMMM YYYY'));
-        $copy = $this->copy($source->root(), $title, $opensAt, $closesAt);
+        $root = $source->root();
+        $sourceOpensAt = $source->opensAt();
+        $title = $this->option('title') ?: $this->retitle($root, $sourceOpensAt, $opensAt);
+        $copy = $this->copy($root, (string) $title, $opensAt, $closesAt);
 
         Entry::query()
             ->where('collection', $polls->collection())
             ->where('origin', $source->id())
             ->get()
-            ->each(fn (StatamicEntry $translation) => $this->copy($translation, $title, $opensAt, $closesAt, $copy));
+            ->each(fn (StatamicEntry $translation) => $this->copy(
+                $translation,
+                $this->retitle($translation, $sourceOpensAt, $opensAt),
+                $opensAt,
+                $closesAt,
+                $copy,
+            ));
 
         $this->components->info("Poll [{$copy->id()}] \"{$title}\" created.");
 
@@ -76,6 +85,38 @@ class DuplicatePoll extends Command
         $parse = fn (?string $value): ?CarbonImmutable => $value ? CarbonImmutable::parse($value, $timezone) : null;
 
         return [$parse($this->option('opens')), $parse($this->option('closes'))];
+    }
+
+    /**
+     * The entry's own title (in its own language) with the old month and year swapped for the
+     * new ones: "Jugador Power — Noviembre" becomes "Jugador Power — Diciembre". When the title
+     * names no month, the new month and year are appended.
+     */
+    protected function retitle(StatamicEntry $entry, ?CarbonImmutable $from, CarbonImmutable $to): string
+    {
+        $title = trim((string) $entry->value('title'));
+        $locale = Site::get($entry->locale())?->lang() ?? app()->getLocale();
+        $to = $to->locale($locale);
+
+        if ($from) {
+            $from = $from->setTimezone($to->getTimezone())->locale($locale);
+            $oldMonth = $from->isoFormat('MMMM');
+            $newMonth = $to->isoFormat('MMMM');
+
+            if (mb_stripos($title, $oldMonth) !== false) {
+                $title = preg_replace_callback(
+                    '/'.preg_quote($oldMonth, '/').'/iu',
+                    fn (array $match): string => mb_strtoupper(mb_substr($match[0], 0, 1)) === mb_substr($match[0], 0, 1)
+                        ? mb_strtoupper(mb_substr($newMonth, 0, 1)).mb_substr($newMonth, 1)
+                        : $newMonth,
+                    $title,
+                ) ?? $title;
+
+                return str_replace((string) $from->year, (string) $to->year, $title);
+            }
+        }
+
+        return trim($title.' '.$to->isoFormat('MMMM YYYY'));
     }
 
     protected function copy(StatamicEntry $entry, string $title, CarbonImmutable $opensAt, CarbonImmutable $closesAt, ?StatamicEntry $origin = null): StatamicEntry
