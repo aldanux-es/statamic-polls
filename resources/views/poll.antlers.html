@@ -1,0 +1,89 @@
+{{#
+    Default poll markup. Publish it to customise:
+    php artisan vendor:publish --tag=statamic-polls-views
+
+    Nothing here depends on the visitor, so it is safe to static-cache. polls.js reads
+    data-poll-state-url and toggles the [data-poll-*] blocks (voted, login, live results).
+#}}
+<section
+    id="poll-{{ id }}"
+    class="poll poll--{{ status }}"
+    data-poll="{{ id }}"
+    data-poll-status="{{ status }}"
+    data-poll-state-url="{{ state_url }}"
+>
+    <h2 class="poll__question">{{ question }}</h2>
+
+    {{ if description }}
+        <p class="poll__description">{{ description }}</p>
+    {{ /if }}
+
+    {{ if is_scheduled }}
+        <p class="poll__notice">{{ opens_on_text }}</p>
+    {{ elseif is_open }}
+        <form class="poll__form" method="POST" action="{{ vote_url }}" data-poll-form>
+            {{ csrf_field }}
+            <input type="hidden" name="site" value="{{ site }}">
+
+            {{ if honeypot }}
+                <div class="poll__honeypot" aria-hidden="true">
+                    <label>
+                        {{ trans key="statamic-polls::messages.honeypot" }}
+                        <input type="text" name="{{ honeypot }}" value="" tabindex="-1" autocomplete="off">
+                    </label>
+                </div>
+            {{ /if }}
+
+            <fieldset class="poll__options">
+                <legend class="poll__legend">{{ question }}</legend>
+                {{ options }}
+                    <label class="poll__option">
+                        <input type="radio" name="option" value="{{ key }}" required>
+                        {{ if image }}
+                            <img class="poll__image" src="{{ glide:image width='160' height='160' fit='crop_focal' }}" alt="" width="80" height="80" loading="lazy">
+                        {{ /if }}
+                        <span class="poll__label">{{ label }}</span>
+                    </label>
+                {{ /options }}
+            </fieldset>
+
+            {{ if turnstile_site_key }}
+                <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}"></div>
+            {{ /if }}
+
+            <button type="submit" class="poll__submit" data-poll-submit>{{ trans key="statamic-polls::messages.vote" }}</button>
+            <p class="poll__error" role="alert" data-poll-error data-poll-error-default="{{ trans key='statamic-polls::messages.error' }}" hidden></p>
+
+            {{ if closes_on_text }}
+                <p class="poll__deadline">{{ closes_on_text }}</p>
+            {{ /if }}
+        </form>
+
+        <div class="poll__thanks" role="status" data-poll-thanks hidden>
+            <p>{{ trans key="statamic-polls::messages.thanks" }}</p>
+            {{ if results_visibility == 'after_close' }}
+                <p>{{ trans key="statamic-polls::messages.thanks_results" }}</p>
+            {{ /if }}
+        </div>
+
+        <p class="poll__login" data-poll-login hidden>{{ trans key="statamic-polls::messages.login_required" }}</p>
+
+        <ol class="poll__results" data-poll-live-results hidden></ol>
+    {{ else }}
+        <p class="poll__notice">{{ trans key="statamic-polls::messages.closed" }} · {{ total_votes_text }}</p>
+
+        <ol class="poll__results">
+            {{ results }}
+                <li class="poll__result{{ if is_winner }} poll__result--winner{{ /if }}">
+                    {{ if image }}
+                        <img class="poll__image" src="{{ glide:image width='160' height='160' fit='crop_focal' }}" alt="" width="80" height="80" loading="lazy">
+                    {{ /if }}
+                    <span class="poll__label">{{ label }}</span>
+                    {{ if is_winner }}<span class="poll__badge">{{ trans key="statamic-polls::messages.winner" }}</span>{{ /if }}
+                    <progress class="poll__bar" max="100" value="{{ percent }}">{{ percent }}%</progress>
+                    <span class="poll__count">{{ percent }}% · {{ votes_text }}</span>
+                </li>
+            {{ /results }}
+        </ol>
+    {{ /if }}
+</section>

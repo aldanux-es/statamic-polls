@@ -1,0 +1,42 @@
+{
+    "name": "aldanux/statamic-polls",
+    "description": "Simple, reusable polls and voting for Statamic. Options from any collection or plain text, one vote per visitor, static-cache friendly.",
+    "type": "statamic-addon",
+    "license": "MIT",
+    "keywords": ["statamic", "statamic-addon", "poll", "polls", "voting", "vote", "survey"],
+    "autoload": {
+        "psr-4": {
+            "Aldanux\\StatamicPolls\\": "src"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Aldanux\\StatamicPolls\\Tests\\": "tests"
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "statamic/cms": "^6.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.8"
+    },
+    "config": {
+        "allow-plugins": {
+            "pixelfear/composer-dist-plugin": true
+        }
+    },
+    "extra": {
+        "statamic": {
+            "name": "Polls",
+            "description": "Simple, reusable polls and voting for Statamic"
+        },
+        "laravel": {
+            "providers": [
+                "Aldanux\\StatamicPolls\\ServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

@@ -1,0 +1,16 @@
+{{#
+    Default archive: the polls of a group, newest first.
+    php artisan vendor:publish --tag=statamic-polls-views
+#}}
+<div class="poll-archive">
+    {{ if no_results }}
+        <p class="poll-archive__empty">{{ trans key="statamic-polls::messages.no_polls" }}</p>
+    {{ else }}
+        {{ items }}
+            <article class="poll-archive__item">
+                <h3 class="poll-archive__title">{{ title }}</h3>
+                {{ polls :poll="id" }}
+            </article>
+        {{ /items }}
+    {{ /if }}
+</div>

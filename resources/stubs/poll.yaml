@@ -1,0 +1,195 @@
+title: Poll
+tabs:
+  main:
+    display: Main
+    sections:
+      -
+        fields:
+          -
+            handle: title
+            field:
+              type: text
+              required: true
+              validate:
+                - required
+          -
+            handle: question
+            field:
+              type: text
+              display: 'statamic-polls::fields.question'
+              instructions: 'statamic-polls::fields.question_instructions'
+              localizable: true
+          -
+            handle: description
+            field:
+              type: textarea
+              display: 'statamic-polls::fields.description'
+              localizable: true
+          -
+            handle: options
+            field:
+              type: replicator
+              display: 'statamic-polls::fields.options'
+              instructions: 'statamic-polls::fields.options_instructions'
+              localizable: false
+              collapse: true
+              sets:
+                options:
+                  display: 'statamic-polls::fields.options'
+                  sets:
+                    entry:
+                      display: 'statamic-polls::fields.set_entry'
+                      instructions: 'statamic-polls::fields.set_entry_instructions'
+                      icon: link
+                      fields:
+                        -
+                          handle: entry
+                          field:
+                            type: entries
+                            display: 'statamic-polls::fields.entry'
+                            max_items: 1
+                            mode: default
+                            collections: {{ entry_collections }}
+                            validate:
+                              - required
+                        -
+                          handle: label
+                          field:
+                            type: text
+                            display: 'statamic-polls::fields.label'
+                            instructions: 'statamic-polls::fields.label_override_instructions'
+                    query:
+                      display: 'statamic-polls::fields.set_query'
+                      instructions: 'statamic-polls::fields.set_query_instructions'
+                      icon: filter
+                      fields:
+                        -
+                          handle: collection
+                          field:
+                            type: collections
+                            display: 'statamic-polls::fields.collection'
+                            max_items: 1
+                            mode: select
+                            validate:
+                              - required
+                        -
+                          handle: conditions
+                          field:
+                            type: grid
+                            display: 'statamic-polls::fields.conditions'
+                            mode: table
+                            fields:
+                              -
+                                handle: field
+                                field:
+                                  type: text
+                                  display: 'statamic-polls::fields.condition_field'
+                              -
+                                handle: operator
+                                field:
+                                  type: select
+                                  display: 'statamic-polls::fields.condition_operator'
+                                  default: '='
+                                  options:
+                                    '=': '='
+                                    '!=': '≠'
+                                    '>': '>'
+                                    '<': '<'
+                                    '>=': '≥'
+                                    '<=': '≤'
+                              -
+                                handle: value
+                                field:
+                                  type: text
+                                  display: 'statamic-polls::fields.condition_value'
+                        -
+                          handle: order_by
+                          field:
+                            type: text
+                            display: 'statamic-polls::fields.order_by'
+                            instructions: 'statamic-polls::fields.order_by_instructions'
+                            width: 50
+                        -
+                          handle: limit
+                          field:
+                            type: integer
+                            display: 'statamic-polls::fields.limit'
+                            width: 50
+                    text:
+                      display: 'statamic-polls::fields.set_text'
+                      instructions: 'statamic-polls::fields.set_text_instructions'
+                      icon: text
+                      fields:
+                        -
+                          handle: label
+                          field:
+                            type: text
+                            display: 'statamic-polls::fields.label'
+                            validate:
+                              - required
+                        -
+                          handle: image
+                          field:
+                            type: assets
+                            display: 'statamic-polls::fields.image'
+                            max_files: 1
+                            container: {{ container }}
+  sidebar:
+    display: Sidebar
+    sections:
+      -
+        fields:
+          -
+            handle: slug
+            field:
+              type: slug
+              localizable: true
+              validate: 'max:200'
+          -
+            handle: group
+            field:
+              type: slug
+              display: 'statamic-polls::fields.group'
+              instructions: 'statamic-polls::fields.group_instructions'
+              generate: false
+              localizable: false
+          -
+            handle: opens_at
+            field:
+              type: date
+              display: 'statamic-polls::fields.opens_at'
+              time_enabled: true
+              localizable: false
+              validate:
+                - required
+          -
+            handle: closes_at
+            field:
+              type: date
+              display: 'statamic-polls::fields.closes_at'
+              time_enabled: true
+              localizable: false
+              validate:
+                - required
+                - after:opens_at
+          -
+            handle: audience
+            field:
+              type: button_group
+              display: 'statamic-polls::fields.audience'
+              default: public
+              localizable: false
+              options:
+                public: 'statamic-polls::fields.audience_public'
+                authenticated: 'statamic-polls::fields.audience_authenticated'
+          -
+            handle: results_visibility
+            field:
+              type: button_group
+              display: 'statamic-polls::fields.results_visibility'
+              default: after_close
+              localizable: false
+              options:
+                after_close: 'statamic-polls::fields.results_after_close'
+                after_vote: 'statamic-polls::fields.results_after_vote'
+                always: 'statamic-polls::fields.results_always'

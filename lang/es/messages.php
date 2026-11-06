@@ -1,0 +1,25 @@
+<?php
+
+return [
+    'vote' => 'Votar',
+    'voting' => 'Enviando…',
+    'thanks' => '¡Gracias por votar!',
+    'thanks_results' => 'Los resultados se publicarán cuando cierre la votación.',
+    'opens_on' => 'La votación abre el :date',
+    'closes_on' => 'Puedes votar hasta el :date',
+    'closed' => 'Votación cerrada',
+    'results' => 'Resultados',
+    'votes' => '{0} Sin votos|{1} 1 voto|[2,*] :count votos',
+    'winner' => 'Ganador',
+    'login_required' => 'Inicia sesión para votar.',
+    'no_polls' => 'Todavía no hay votaciones.',
+    'honeypot' => 'Deja este campo vacío',
+    'error' => 'No hemos podido registrar tu voto. Inténtalo de nuevo.',
+    'recorded' => '¡Gracias por votar!',
+    'ignored' => '¡Gracias por votar!',
+    'already_voted' => 'Ya has votado en esta encuesta.',
+    'not_open' => 'Esta votación no está abierta.',
+    'invalid_option' => 'Elige una de las opciones.',
+    'too_many_attempts' => 'Demasiados intentos. Espera un momento y vuelve a probar.',
+    'verification_failed' => 'No hemos podido verificar que no eres un robot.',
+];
