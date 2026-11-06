@@ -89,7 +89,7 @@ class DuplicatePoll extends Command
 
     /**
      * The entry's own title (in its own language) with the old month and year swapped for the
-     * new ones: "Jugador Power — Noviembre" becomes "Jugador Power — Diciembre". When the title
+     * new ones: "Player of the month — November" becomes "Player of the month — December". When the title
      * names no month, the new month and year are appended.
      */
     protected function retitle(StatamicEntry $entry, ?CarbonImmutable $from, CarbonImmutable $to): string

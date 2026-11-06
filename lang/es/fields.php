@@ -25,7 +25,7 @@ return [
     'limit' => 'Límite',
     'image' => 'Imagen',
     'group' => 'Grupo',
-    'group_instructions' => 'Agrupa encuestas para listarlas juntas (p. ej. `jugador-power`).',
+    'group_instructions' => 'Agrupa encuestas para listarlas juntas (p. ej. `jugador-del-mes`).',
     'opens_at' => 'Abre',
     'closes_at' => 'Cierra',
     'audience' => 'Quién puede votar',

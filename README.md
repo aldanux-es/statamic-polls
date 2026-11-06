@@ -2,8 +2,6 @@
 
 Simple, reusable polls and voting for Statamic 6. Answers come from any collection (hand-picked entries or a query, e.g. "every active player") or plain text. One vote per visitor, results hidden until the poll closes, and markup that is safe to cache with static caching.
 
-Built for the monthly "Player of the Month" vote of [UD Ibiza](https://www.ibizaud.com/jugador-power).
-
 ## Features
 
 - **Polls are entries** of a `polls` collection, so editors manage them in the control panel. They're translatable, and every language counts towards the same result.

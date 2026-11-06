@@ -2,6 +2,12 @@
 
 All notable changes to this addon are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and versions follow [Semantic Versioning](https://semver.org/).
 
+## [0.1.1] - 2026-11-06
+
+### Changed
+
+- Documentation and examples no longer refer to a specific site.
+
 ## [0.1.0] - 2026-11-06
 
 First public release.

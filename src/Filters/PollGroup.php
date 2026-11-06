@@ -7,7 +7,7 @@ use Statamic\Facades\Entry;
 use Statamic\Query\Scopes\Filter;
 
 /**
- * The poll groups in use (e.g. "jugador-power"), to list one series at a time.
+ * The poll groups in use (e.g. "player-of-the-month"), to list one series at a time.
  */
 class PollGroup extends Filter
 {
