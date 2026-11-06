@@ -96,7 +96,10 @@ return [
     | Cloudflare Turnstile (optional)
     |--------------------------------------------------------------------------
     |
-    | When both keys are set, every vote must carry a valid Turnstile token.
+    | When both keys are set, every vote must carry a valid Turnstile token. polls.js loads
+    | Cloudflare's script and renders the widget in each open poll, so voting then needs
+    | JavaScript. Each token is checked with Cloudflare's siteverify API, which receives the
+    | token and the visitor's IP address.
     |
     */
 

@@ -21,5 +21,6 @@ return [
     'not_open' => 'Esta votación no está abierta.',
     'invalid_option' => 'Elige una de las opciones.',
     'too_many_attempts' => 'Demasiados intentos. Espera un momento y vuelve a probar.',
-    'verification_failed' => 'No hemos podido verificar que no eres un robot.',
+    'verification_failed' => 'No hemos podido verificar que no eres un robot. Vuelve a intentarlo.',
+    'verification_pending' => 'Espera un momento mientras comprobamos que no eres un robot.',
 ];

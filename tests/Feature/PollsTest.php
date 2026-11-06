@@ -5,6 +5,8 @@ use Aldanux\StatamicPolls\Poll;
 use Aldanux\StatamicPolls\PollManager;
 use Aldanux\StatamicPolls\Votes\Vote;
 use Illuminate\Auth\GenericUser;
+use Illuminate\Http\Client\Request as HttpRequest;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Statamic\Entries\Entry as StatamicEntry;
@@ -134,6 +136,54 @@ it('refuses votes outside the window, for unknown answers or sent as arrays', fu
     vote($closed->id(), 'text:other')->assertForbidden()->assertJson(['outcome' => 'not_open']);
     vote($open->id(), 'text:nope')->assertUnprocessable()->assertJson(['outcome' => 'invalid_option']);
     vote($open->id(), ['text:other'])->assertUnprocessable()->assertJson(['outcome' => 'invalid_option']);
+});
+
+it('checks every vote with cloudflare turnstile once both keys are set', function () {
+    config(['statamic-polls.turnstile.site_key' => 'site-key', 'statamic-polls.turnstile.secret' => 'secret']);
+    Http::fake(['challenges.cloudflare.com/*' => Http::sequence()
+        ->push(['success' => false, 'error-codes' => ['timeout-or-duplicate']])
+        ->push(['success' => true])]);
+    $poll = poll();
+
+    expect(render('{{ polls :poll="poll" }}', ['poll' => $poll->id()]))
+        ->toContain('data-poll-turnstile data-sitekey="site-key"');
+
+    vote($poll->id(), 'text:other')->assertUnprocessable()->assertJson(['outcome' => 'verification_failed']);
+    Http::assertNothingSent();
+
+    vote($poll->id(), 'text:other', ['cf-turnstile-response' => 'spent'])->assertUnprocessable();
+    vote($poll->id(), 'text:other', ['cf-turnstile-response' => 'fresh'])->assertOk()->assertJson(['outcome' => 'recorded']);
+
+    Http::assertSent(fn (HttpRequest $request): bool => $request['secret'] === 'secret'
+        && $request['response'] === 'fresh'
+        && $request['remoteip'] === '127.0.0.1');
+});
+
+it('leaves turnstile out until both keys are set', function () {
+    config(['statamic-polls.turnstile.site_key' => 'site-key', 'statamic-polls.turnstile.secret' => null]);
+    Http::fake();
+    $poll = poll();
+
+    expect(render('{{ polls :poll="poll" }}', ['poll' => $poll->id()]))->not->toContain('data-poll-turnstile');
+    vote($poll->id(), 'text:other')->assertOk();
+    Http::assertNothingSent();
+});
+
+it('confirms a vote sent without javascript when the visitor comes back', function () {
+    $poll = poll();
+    $other = poll();
+
+    $this->withHeader('User-Agent', BROWSER)->from('/vote-here')
+        ->post("/!/statamic-polls/polls/{$poll->id()}/vote", ['option' => 'text:other'])
+        ->assertRedirect('/vote-here#poll-'.$poll->id())
+        ->assertSessionHas('statamic-polls.outcome', 'recorded')
+        ->assertSessionHas('statamic-polls.poll', $poll->id());
+
+    expect(render('{{ polls :poll="poll" }}', ['poll' => $poll->id()]))
+        ->toContain('poll__outcome--recorded')
+        ->toContain('Thanks for voting!')
+        ->and(render('{{ polls :poll="poll" }}', ['poll' => $other->id()]))
+        ->not->toContain('poll__outcome');
 });
 
 it('caps the votes of a shared address', function () {

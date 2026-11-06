@@ -10,10 +10,17 @@
  * Usage: import it in your bundle (it initialises itself), or load the published copy:
  *   <script type="module" src="/vendor/statamic-polls/js/polls.js"></script>
  * Call initPolls(element) again for polls injected after page load.
+ *
+ * With Cloudflare Turnstile enabled, the markup carries a [data-poll-turnstile] placeholder:
+ * this script loads Cloudflare's script once and renders the widget in each open poll.
  */
 
 const SELECTOR = '[data-poll]';
 const VOTED_KEY = 'statamic-polls:voted:';
+const TURNSTILE_SELECTOR = '[data-poll-turnstile], .cf-turnstile';
+const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+
+let turnstileLoading = null;
 
 export function initPolls(root = document) {
     root.querySelectorAll(SELECTOR).forEach(setup);
@@ -46,9 +53,81 @@ function setup(poll) {
         form.addEventListener('change', () => poll.querySelector('[data-poll-error]')?.setAttribute('hidden', ''));
     }
 
-    if (needsState(poll)) {
-        fetchState(poll).then((state) => state && apply(poll, state));
+    if (!needsState(poll)) {
+        renderTurnstile(poll);
+
+        return;
     }
+
+    fetchState(poll).then((state) => {
+        if (state) {
+            apply(poll, state);
+        }
+
+        // No security check for visitors who can't vote anyway (already voted, logged out).
+        if (!state || state.can_vote) {
+            renderTurnstile(poll);
+        }
+    });
+}
+
+function loadTurnstile() {
+    if (window.turnstile) {
+        return Promise.resolve(window.turnstile);
+    }
+
+    turnstileLoading ??= new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+
+        script.src = TURNSTILE_SCRIPT;
+        script.async = true;
+        script.addEventListener('load', () => resolve(window.turnstile));
+        script.addEventListener('error', () => {
+            turnstileLoading = null;
+            reject(new Error('Cloudflare Turnstile could not be loaded.'));
+        });
+        document.head.append(script);
+    });
+
+    return turnstileLoading;
+}
+
+function renderTurnstile(poll) {
+    poll.querySelectorAll(TURNSTILE_SELECTOR).forEach((container) => {
+        // Already rendered, by us or by a Turnstile script the site loads itself.
+        if (container.dataset.pollTurnstileId || container.childElementCount > 0) {
+            return;
+        }
+
+        container.dataset.pollTurnstileId = 'pending';
+
+        loadTurnstile()
+            .then((turnstile) => {
+                container.dataset.pollTurnstileId = turnstile.render(container, { sitekey: container.dataset.sitekey });
+            })
+            .catch(() => {
+                delete container.dataset.pollTurnstileId;
+            });
+    });
+}
+
+// A Turnstile token is single-use: after a failed submission, get the visitor a fresh one.
+function resetTurnstile(poll) {
+    poll.querySelectorAll(TURNSTILE_SELECTOR).forEach((container) => {
+        const id = container.dataset.pollTurnstileId;
+
+        if (id && id !== 'pending') {
+            window.turnstile?.reset(id);
+        }
+    });
+}
+
+function awaitingTurnstile(form) {
+    if (!form.querySelector(TURNSTILE_SELECTOR)) {
+        return false;
+    }
+
+    return !form.querySelector('input[name="cf-turnstile-response"]')?.value;
 }
 
 function needsState(poll) {
@@ -116,6 +195,12 @@ async function submit(poll, form) {
         return;
     }
 
+    if (awaitingTurnstile(form)) {
+        showError(error, error?.dataset.pollErrorVerifying);
+
+        return;
+    }
+
     button?.setAttribute('disabled', '');
     error?.setAttribute('hidden', '');
 
@@ -135,8 +220,10 @@ async function submit(poll, form) {
         }
 
         showError(error, data.message);
+        resetTurnstile(poll);
     } catch {
         showError(error);
+        resetTurnstile(poll);
     } finally {
         button?.removeAttribute('disabled');
     }

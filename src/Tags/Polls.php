@@ -4,6 +4,7 @@ namespace Aldanux\StatamicPolls\Tags;
 
 use Aldanux\StatamicPolls\Enums\Audience;
 use Aldanux\StatamicPolls\Enums\PollStatus;
+use Aldanux\StatamicPolls\Enums\VoteOutcome;
 use Aldanux\StatamicPolls\Options\PollOption;
 use Aldanux\StatamicPolls\Poll;
 use Aldanux\StatamicPolls\PollManager;
@@ -19,6 +20,7 @@ use Statamic\Tags\Tags;
  * {{ polls:archive group="player-of-month" }} every opened poll of a group, newest first
  * {{ polls:winner group="player-of-month" }}  the winning answer(s) of the latest closed poll
  * {{ polls:head }}                          tiny pre-paint script for the <head> (see head())
+ * {{ polls:outcome :poll="id" }}             the result of a vote sent without JavaScript
  *
  * The markup is cache-safe: nothing in it depends on the visitor. Their state (voted, login)
  * is fetched by polls.js from the state endpoint.
@@ -65,6 +67,31 @@ class Polls extends Tags
         return <<<'HTML'
             <script>(function(){try{var p='statamic-polls:voted:',c='';for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(p)===0){var id=k.slice(p.length).replace(/[^A-Za-z0-9_-]/g,'');var s='[data-poll="'+id+'"] ';c+=s+'[data-poll-form]{display:none!important}'+s+'[data-poll-thanks]{display:block!important}';}}if(c){var e=document.createElement('style');e.setAttribute('data-polls-voted','');e.textContent=c;document.head.appendChild(e);}}catch(e){}})();</script>
             HTML;
+    }
+
+    /**
+     * The result of a vote sent without JavaScript: the form posts, and the visitor comes back
+     * with the outcome flashed to the session. It depends on the visitor, so wrap it in
+     * {{ nocache }} on cached pages (the default view does).
+     *
+     * Without one it renders nothing (a pair given an empty array still renders its content).
+     *
+     * @return array{outcome: string, message: string, is_success: bool}|string
+     */
+    public function outcome(): array|string
+    {
+        $outcome = VoteOutcome::tryFrom((string) session('statamic-polls.outcome'));
+        $poll = $this->params->get('poll');
+
+        if (! $outcome || (is_string($poll) && $poll !== '' && session('statamic-polls.poll') !== $poll)) {
+            return '';
+        }
+
+        return [
+            'outcome' => $outcome->value,
+            'message' => __('statamic-polls::messages.'.$outcome->value, [], $this->locale($this->site())),
+            'is_success' => $outcome->counts() || $outcome === VoteOutcome::AlreadyVoted,
+        ];
     }
 
     /**
