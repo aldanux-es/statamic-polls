@@ -95,6 +95,11 @@ class DatabaseVoteRepository implements VoteRepository
         return $this->query()->where('poll_id', $pollId)->where('voter_id', $voterId)->delete() > 0;
     }
 
+    public function forgetIp(string $pollId, string $ipHash): int
+    {
+        return $this->query()->where('poll_id', $pollId)->where('ip_hash', $ipHash)->delete();
+    }
+
     public function polls(): array
     {
         return $this->query()->distinct()->pluck('poll_id')->all();

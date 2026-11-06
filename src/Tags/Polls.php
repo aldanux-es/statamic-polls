@@ -18,6 +18,7 @@ use Statamic\Tags\Tags;
  * {{ polls :poll="poll" }}                  renders a poll (or, as a pair, exposes its data)
  * {{ polls:archive group="player-of-month" }} every opened poll of a group, newest first
  * {{ polls:winner group="player-of-month" }}  the winning answer(s) of the latest closed poll
+ * {{ polls:head }}                          tiny pre-paint script for the <head> (see head())
  *
  * The markup is cache-safe: nothing in it depends on the visitor. Their state (voted, login)
  * is fetched by polls.js from the state endpoint.
@@ -50,6 +51,20 @@ class Polls extends Tags
         $data = ['items' => $polls, 'total_items' => count($polls), 'no_results' => $polls === []];
 
         return $this->isPair ? $data : view('statamic-polls::archive', $data)->render();
+    }
+
+    /**
+     * A tiny inline script for the <head>. Pages are cached, so the markup always shows the
+     * voting form; polls.js only learns "already voted" after loading, which made the form
+     * flash before the thanks message. This reads the browser's own record of its votes
+     * (localStorage, written by polls.js) and adds CSS that swaps form for thanks before the
+     * first paint. The server stays the authority: polls.js corrects it if it was wrong.
+     */
+    public function head(): string
+    {
+        return <<<'HTML'
+            <script>(function(){try{var p='statamic-polls:voted:',c='';for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf(p)===0){var id=k.slice(p.length).replace(/[^A-Za-z0-9_-]/g,'');var s='[data-poll="'+id+'"] ';c+=s+'[data-poll-form]{display:none!important}'+s+'[data-poll-thanks]{display:block!important}';}}if(c){var e=document.createElement('style');e.setAttribute('data-polls-voted','');e.textContent=c;document.head.appendChild(e);}}catch(e){}})();</script>
+            HTML;
     }
 
     /**

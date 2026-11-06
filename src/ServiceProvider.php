@@ -13,12 +13,21 @@ use Aldanux\StatamicPolls\Votes\VoteRepository;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Filesystem\Filesystem;
 use InvalidArgumentException;
+use Statamic\CP\Navigation\Nav as Navigation;
+use Statamic\Facades\CP\Nav;
+use Statamic\Facades\Permission;
 use Statamic\Providers\AddonServiceProvider;
 
 class ServiceProvider extends AddonServiceProvider
 {
     protected $tags = [
         Polls::class,
+    ];
+
+    protected $scopes = [
+        Filters\PollStatus::class,
+        Filters\PollGroup::class,
+        Filters\PollSite::class,
     ];
 
     protected $commands = [
@@ -30,10 +39,16 @@ class ServiceProvider extends AddonServiceProvider
 
     protected $routes = [
         'actions' => __DIR__.'/../routes/actions.php',
+        'cp' => __DIR__.'/../routes/cp.php',
+    ];
+
+    protected $vite = [
+        'input' => ['resources/js/addon.js'],
+        'publicDirectory' => 'resources/dist',
     ];
 
     protected $publishables = [
-        __DIR__.'/../resources/js' => 'js',
+        __DIR__.'/../resources/js/polls.js' => 'js/polls.js',
     ];
 
     public function register(): void
@@ -77,6 +92,21 @@ class ServiceProvider extends AddonServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => resource_path('views/vendor/statamic-polls'),
         ], 'statamic-polls-views');
+
+        Permission::extend(function (): void {
+            Permission::group('statamic-polls', __('statamic-polls::cp.title'), function (): void {
+                Permission::register('view polls')->label(__('statamic-polls::cp.permission_view'))->children([
+                    Permission::make('void poll votes')->label(__('statamic-polls::cp.permission_void')),
+                ]);
+            });
+        });
+
+        Nav::extend(function (Navigation $nav): void {
+            $nav->findOrCreate('Content', __('statamic-polls::cp.nav'))
+                ->route('statamic-polls.index')
+                ->icon('charts-donut-graph')
+                ->can('view polls');
+        });
     }
 
     protected function schedule(Schedule $schedule): void

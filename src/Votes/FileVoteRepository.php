@@ -100,17 +100,33 @@ class FileVoteRepository implements VoteRepository
 
     public function forget(string $pollId, string $voterId): bool
     {
+        return $this->remove($pollId, fn (array $line): bool => ($line['voter'] ?? null) === $voterId) > 0;
+    }
+
+    public function forgetIp(string $pollId, string $ipHash): int
+    {
+        return $this->remove($pollId, fn (array $line): bool => ($line['ip'] ?? null) === $ipHash);
+    }
+
+    /**
+     * Rewrites the poll's file without the lines matching $matches.
+     *
+     * @param  callable(array<string, mixed>): bool  $matches
+     * @return int lines removed
+     */
+    protected function remove(string $pollId, callable $matches): int
+    {
         if (! $this->files->exists($this->file($pollId))) {
-            return false;
+            return 0;
         }
 
-        return $this->withLock($pollId, LOCK_EX, function ($handle) use ($voterId): bool {
+        return $this->withLock($pollId, LOCK_EX, function ($handle) use ($matches): int {
             $kept = [];
-            $removed = false;
+            $removed = 0;
 
             foreach ($this->lines($handle) as $line) {
-                if (($line['voter'] ?? null) === $voterId) {
-                    $removed = true;
+                if ($matches($line)) {
+                    $removed++;
 
                     continue;
                 }
@@ -118,7 +134,7 @@ class FileVoteRepository implements VoteRepository
                 $kept[] = json_encode($line, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
             }
 
-            if ($removed) {
+            if ($removed > 0) {
                 ftruncate($handle, 0);
                 rewind($handle);
                 fwrite($handle, $kept === [] ? '' : implode("\n", $kept)."\n");

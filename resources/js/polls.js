@@ -58,6 +58,24 @@ function remembersVote(id) {
     }
 }
 
+// The browser thought it had voted but the server disagrees (e.g. cookie cleared): drop the
+// record and the pre-paint CSS from {{ polls:head }} so the form shows again.
+function forgetVote(id) {
+    try {
+        window.localStorage.removeItem(VOTED_KEY + id);
+    } catch {
+        // Ignore.
+    }
+
+    document.querySelectorAll('style[data-polls-voted]').forEach((style) => {
+        style.textContent = style.textContent
+            .split('}')
+            .filter((rule) => rule && !rule.includes(`[data-poll="${id}"]`))
+            .map((rule) => `${rule}}`)
+            .join('');
+    });
+}
+
 function rememberVote(id) {
     try {
         window.localStorage.setItem(VOTED_KEY + id, '1');
@@ -121,6 +139,8 @@ function apply(poll, state) {
 
     if (state.voted) {
         rememberVote(poll.dataset.poll);
+    } else {
+        forgetVote(poll.dataset.poll);
     }
 
     toggle(form, state.can_vote);

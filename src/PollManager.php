@@ -150,6 +150,55 @@ class PollManager
     }
 
     /**
+     * Addresses that voted most in a poll, to spot scripted bursts.
+     *
+     * @return array<string, int> votes per IP hash, highest first
+     */
+    public function votesPerIp(Poll $poll, int $limit = 10): array
+    {
+        $counts = [];
+
+        foreach ($this->votes->all($poll->id()) as $vote) {
+            $counts[$vote->ipHash] = ($counts[$vote->ipHash] ?? 0) + 1;
+        }
+
+        arsort($counts);
+
+        return array_slice($counts, 0, $limit, true);
+    }
+
+    /**
+     * Voids every vote from one address. A closed poll's frozen result is recounted so the
+     * published winner reflects the change.
+     */
+    public function voidIp(Poll $poll, string $ipHash): int
+    {
+        $removed = $this->votes->forgetIp($poll->id(), $ipHash);
+
+        if ($removed > 0 && $poll->frozenResults() !== null) {
+            $poll->freezeResults($this->votes->tally($poll->id()));
+        }
+
+        return $removed;
+    }
+
+    /**
+     * Polls of every site's original entries, newest opening first (for the control panel).
+     *
+     * @return Collection<int, Poll>
+     */
+    public function all(): Collection
+    {
+        return Entry::query()
+            ->where('collection', $this->collection())
+            ->get()
+            ->reject(fn (StatamicEntry $entry): bool => $entry->hasOrigin())
+            ->map(fn (StatamicEntry $entry): Poll => Poll::fromEntry($entry))
+            ->sortByDesc(fn (Poll $poll): int => $poll->opensAt()?->getTimestamp() ?? 0)
+            ->values();
+    }
+
+    /**
      * The final count once frozen; otherwise the live count from storage.
      */
     public function results(Poll $poll): PollResults

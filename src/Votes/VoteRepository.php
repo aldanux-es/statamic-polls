@@ -36,6 +36,13 @@ interface VoteRepository
     public function forget(string $pollId, string $voterId): bool;
 
     /**
+     * Removes every vote cast from one (hashed) IP address, e.g. a scripted burst.
+     *
+     * @return int votes removed
+     */
+    public function forgetIp(string $pollId, string $ipHash): int;
+
+    /**
      * @return array<int, string> ids of every poll with stored votes
      */
     public function polls(): array;
