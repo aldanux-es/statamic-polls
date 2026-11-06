@@ -5,7 +5,7 @@ return [
     'question_instructions' => 'Lo que se pregunta a los votantes. Si se deja vacío se usa el título.',
     'description' => 'Descripción',
     'options' => 'Opciones',
-    'options_instructions' => 'Las opciones se congelan al abrir la votación: los cambios posteriores no afectan a una encuesta abierta.',
+    'options_instructions' => 'Se congelan al abrir la votación. Con la encuesta abierta, puedes cambiarlas mientras no tenga votos; después ya no.',
     'set_entry' => 'Entrada',
     'set_entry_instructions' => 'Una entrada elegida a mano (p. ej. un jugador).',
     'set_query' => 'Entradas de una colección',

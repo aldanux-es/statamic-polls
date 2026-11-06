@@ -1,0 +1,11 @@
+# Left out of the Composer download: development and source-only files. The compiled control
+# panel build (resources/dist) and the front-end script (resources/js/polls.js) ship.
+/.github                export-ignore
+/tests                  export-ignore
+/phpunit.xml            export-ignore
+/vite.config.js         export-ignore
+/package.json           export-ignore
+/resources/js/addon.js  export-ignore
+/resources/js/pages     export-ignore
+/.gitattributes         export-ignore
+/.gitignore             export-ignore

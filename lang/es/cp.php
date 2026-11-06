@@ -30,6 +30,7 @@ return [
     'void' => 'Anular votos',
     'void_confirm' => '¿Anular todos los votos de esta dirección? No se puede deshacer.',
     'voided' => '{0} No había votos que anular.|{1} 1 voto anulado.|[2,*] :count votos anulados.',
+    'options_locked' => 'Las opciones no se han cambiado en la web: la encuesta ya está abierta y tiene votos. Para cambiarlas, crea una encuesta nueva.',
     'permission_view' => 'Ver resultados de encuestas',
     'permission_void' => 'Anular votos de encuestas',
 ];

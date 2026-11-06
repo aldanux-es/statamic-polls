@@ -5,7 +5,7 @@ return [
     'question_instructions' => 'What voters are asked. Falls back to the title when empty.',
     'description' => 'Description',
     'options' => 'Options',
-    'options_instructions' => 'Options are frozen when voting opens: later changes do not affect an open poll.',
+    'options_instructions' => 'Frozen when voting opens. While the poll is open you can still change them until the first vote; not after.',
     'set_entry' => 'Entry',
     'set_entry_instructions' => 'One hand-picked entry (e.g. a player).',
     'set_query' => 'Entries from a collection',

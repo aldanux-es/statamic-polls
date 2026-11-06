@@ -1,10 +1,37 @@
 {
     "name": "aldanux/statamic-polls",
-    "version": "0.1.0",
     "description": "Simple, reusable polls and voting for Statamic. Options from any collection or plain text, one vote per visitor, static-cache friendly.",
     "type": "statamic-addon",
     "license": "MIT",
-    "keywords": ["statamic", "statamic-addon", "poll", "polls", "voting", "vote", "survey"],
+    "keywords": [
+        "statamic",
+        "statamic-addon",
+        "poll",
+        "polls",
+        "voting",
+        "vote",
+        "survey"
+    ],
+    "homepage": "https://github.com/aldanux-es/statamic-polls",
+    "authors": [
+        {
+            "name": "Aldanux",
+            "homepage": "https://www.aldanux.es"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/aldanux-es/statamic-polls/issues",
+        "source": "https://github.com/aldanux-es/statamic-polls"
+    },
+    "require": {
+        "php": "^8.2",
+        "statamic/cms": "^6.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^10.8 || ^11.0",
+        "pestphp/pest": "^3.8 || ^4.0",
+        "pestphp/pest-plugin-laravel": "^3.0 || ^4.0"
+    },
     "autoload": {
         "psr-4": {
             "Aldanux\\StatamicPolls\\": "src"
@@ -15,16 +42,13 @@
             "Aldanux\\StatamicPolls\\Tests\\": "tests"
         }
     },
-    "require": {
-        "php": "^8.2",
-        "statamic/cms": "^6.0"
-    },
-    "require-dev": {
-        "orchestra/testbench": "^10.8"
+    "scripts": {
+        "test": "pest"
     },
     "config": {
         "allow-plugins": {
-            "pixelfear/composer-dist-plugin": true
+            "pixelfear/composer-dist-plugin": true,
+            "pestphp/pest-plugin": true
         }
     },
     "extra": {

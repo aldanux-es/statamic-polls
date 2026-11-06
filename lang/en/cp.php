@@ -30,6 +30,7 @@ return [
     'void' => 'Void votes',
     'void_confirm' => 'Void every vote from this address? This cannot be undone.',
     'voided' => '{0} There were no votes to void.|{1} 1 vote voided.|[2,*] :count votes voided.',
+    'options_locked' => 'The options did not change on the site: the poll is open and already has votes. Create a new poll to change them.',
     'permission_view' => 'View poll results',
     'permission_void' => 'Void poll votes',
 ];
